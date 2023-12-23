@@ -1,0 +1,50 @@
+# {{ ansible_managed }}
+
+# Log anything (except mail) of level info or higher.
+# Don't log private authentication messages!
+*.info;user.none;mail.none;authpriv.none;cron.none                /var/log/messages
+
+# The authpriv file has restricted access.
+auth,authpriv.*                                              /var/log/secure
+
+# Log all the mail messages in one place.  
+mail.*                                                  -/var/log/maillog
+
+# Log cron stuff
+cron.*                                                  /var/log/cron
+
+# Save news errors of level crit and higher in a special file.
+uucp,news.crit                                          /var/log/spooler
+
+# Save boot messages also to boot.log
+local7.*                                                /var/log/boot.log
+
+# ssh
+auth.info                       /var/log/sshd.log
+#
+# sudo
+local7.notice                   /var/log/sudo.log
+#
+# iptables
+:msg, contains, "IPTABLES"		/var/log/iptables.log
+& ~
+
+*.*                             /var/log/all.log
+
+{% if hostvars[inventory_hostname].RsyslogCustomRule is defined %}
+{% for RsyslogEntry in hostvars[inventory_hostname].RsyslogCustomRule  %}
+
+# {{ RsyslogEntry.Name }}
+{% for RuleLine in RsyslogEntry.Rule %}
+{{ RuleLine }}
+{% endfor %}
+{% endfor %}
+{% else %}
+{% for RsyslogEntry in RsyslogCustomRule  %}
+
+# {{ RsyslogEntry.Name }}
+{% for RuleLine in RsyslogEntry.Rule %}
+{{ RuleLine }}
+{% endfor %}
+{% endfor %}
+{% endif %}

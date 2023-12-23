@@ -1,0 +1,48 @@
+---
+- name: Install multitail package if it isn't installed 
+  package:
+    name: "multitail"
+    state: latest
+
+- name: check if multitail.conf exists
+  stat: 
+    path: /etc/multitail.conf
+  register: MultitailConf
+
+- name: insert multitail customizations in the /etc/multitail.conf file
+  blockinfile:
+    path: /etc/multitail.conf
+    #marker: "# Ansible Managed Block"
+    backup: yes
+    insertbefore: "#defaultcscheme:syslog"
+    block: |
+      colorscheme:sudo
+      cs_re:yellow,,bold:.*etmsys.*
+      cs_re:red,,bold::.*.COMMAND.NOT.ALLOWED.*
+      cs_re:cyan,,bold::*.*
+      # /var/log/fail2ban.log
+      scheme:fail2ban:/var/log/fail2ban.log
+      colorscheme:fail2ban
+      cs_re:red,,bold:.*Ban.*
+      cs_re:magenta,,bold:.*already.banned*
+      cs_re:yellow,,bold:.*WARNING.*
+      cs_re:green:.*Unban.*
+      cs_re:cyan:.*.*
+      #rsnapshot
+      colorscheme:backup
+      cs_re:green:.started
+      cs_re:green:.completed.successfully
+      cs_re:red,,bold:ERROR
+      cs_re:red,,bold:.completed.*
+  when: MultitailConf.stat.exists == True
+- name: insert additional multitail customizations in the /etc/multitail.conf file for syslog
+  lineinfile:
+    dest: /etc/multitail.conf
+    backup: yes
+    insertafter: ^cs_re:yellow:Did.not$
+    line: "{{item}}"
+  with_items:
+    - 'cs_re:yellow:Bad protocol version identification.*'
+    - 'cs_re:red:Failed password for invalid user.*'
+    - 'cs_re:red:Invalid user.*'
+

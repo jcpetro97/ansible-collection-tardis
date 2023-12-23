@@ -1,0 +1,79 @@
+---
+- name: Ubuntu - apt-get update
+  ansible.builtin.apt:
+    update-cache: yes
+#    cache_valid_time: 900
+
+- name: Ubuntu - Do we have any updates to apply
+  ansible.builtin.shell: if sudo apt-get --dry-run upgrade | grep -w "^0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded$"; then echo "no"; else echo "yes"; fi
+  register: updates
+  changed_when: false
+
+- name: Ubuntu - No Updates to apply
+  ansible.builtin.debug:
+    msg: "-------> NO UPDATES TO APPLY FOR THIS HOST <------------"
+  when: updates.stdout == "no" 
+- name: Ubuntu - Exit the playbook
+  ansible.builtin.meta: end_host
+  when: updates.stdout == "no"
+# if sudo apt-get --dry-run upgrade | grep -q "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded"; then echo "no"; else echo "yes"; fi
+- name: Ubuntu - Does /usr/bin/vboxmanage exist on the client
+  ansible.builtin.stat:
+    path: /usr/bin/vboxmanage
+  register: myvboxmanage
+  changed_when: false
+
+- name: Ubuntu - What user is /usr/bin/vboxmanage running as
+  ansible.builtin.shell: ps -ef | egrep /usr/lib/virtualbox | grep -v grep | awk '{print $1}' | uniq
+  register: vboxuser
+  changed_when: false
+  when: myvboxmanage.stat.exists
+
+- name: Ubuntu - Set UserName variable after determing what user vboxmanage is running as
+  ansible.builtin.set_fact: UserName={{ vboxuser.stdout }}
+  changed_when: false    
+  when: myvboxmanage.stat.exists
+
+- name: Ubuntu - Save the current state of the VM to disk and then stop the VM.
+  ansible.builtin.shell: VBoxManage list runningvms | cut -d '"' -f 2 | while read machine; do    /usr/bin/vboxmanage controlvm "$machine" savestate; done
+  become_user: '{{ UserName }}'
+  async: 120
+  poll: 5
+  when: myvboxmanage.stat.exists
+
+- name: Ubuntu - Check to see if the VirtualBox gui is running
+  ansible.builtin.shell: /bin/ps -aux | grep -v grep | grep /usr/lib/virtualbox/VirtualBox | wc -l
+  register: vbguiproc
+  changed_when: false    
+  when: myvboxmanage.stat.exists   
+
+- name: Ubuntu - Shutdown VirtualBox gui if it is running
+  ansible.builtin.shell: /bin/ps -ef | grep /usr/lib/virtualbox/VirtualBox | grep -v grep | kill -HUP `awk '{print $2}'`
+  become_user: '{{ UserName }}'
+  when: myvboxmanage.stat.exists and vbguiproc.stdout != "0"
+
+- name: Ubuntu - Apply updates for Debian/Ubuntu
+  ansible.builtin.apt:
+    upgrade:  dist
+    autoremove: yes
+    state: latest
+  register: patched
+  delay: 10
+  retries: 12
+  become_user: root
+  until: patched is successful
+
+- name: Ubuntu - Reboot after Debian/Ubuntu updates have completed
+  ansible.builtin.shell: "sleep 5 && reboot"
+  become_user: root
+  async: 1
+  poll: 0
+  when: patched is changed
+
+- name: Ubuntu - Wait for the reboot to complete
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 30
+    sleep: 5
+    delay: 20
+    timeout: 300
+  when: patched is changed

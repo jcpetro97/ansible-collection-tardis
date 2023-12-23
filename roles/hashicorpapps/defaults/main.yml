@@ -1,0 +1,5 @@
+---
+HashiCorpApps_Packer_State: present
+HashiCorpApps_Vagrant_State: present
+HashiCorpApps_Vault_State: absent
+HashiCorpApps_Terraform_State: absent

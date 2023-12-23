@@ -1,0 +1,46 @@
+---
+
+- name: RedHat| Install epel repository
+  ansible.builtin.yum:
+    name: epel-release
+    state: present
+  register: epel_installed
+  delay: 10
+  retries: 12
+  until: epel_installed is successful and ansible_distribution_major_version == "7"
+
+  - name: RedHat| Install epel repository
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  register: epel_installed
+  delay: 10
+  retries: 12
+  until: epel_installed is successful and ansible_distribution_major_version > "7"
+
+
+- name: RedHat| Reboot after installing epel repo
+  ansible.builtin.shell: "sleep 5 && reboot"
+  async: 1
+  poll: 0
+  when: epel_installed is changed
+
+- name: RedHat| Wait for the reboot to complete
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 30
+    sleep: 5
+    delay: 20
+    timeout: 300
+  when: epel_installed is changed
+
+- name: RedHat| Install RedHat Packages
+  ansible.builtin.yum:
+    name: "{{RedHat}}"
+    state: present
+  when: SystemType|default('Server') == "Server" and ansible_distribution_major_version == "7"
+
+- name: RedHat| Install RedHat Packages
+  ansible.builtin.dnf:
+    name: "{{RedHat}}"
+    state: present
+  when: SystemType|default('Server') == "Server" and ansible_distribution_major_version > "7"

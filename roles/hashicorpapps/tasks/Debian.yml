@@ -1,0 +1,58 @@
+---
+- name: Debian/Ubuntu - Check to see if a repository is already defined on the host
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/hashicorp.list
+  register: _hashicorpapps_repofile
+
+- name: Debian/Ubuntu - Add GPG Key and Repository for Hashicorp Apps
+  block:  
+    - name: Debian/Ubuntu - Get GPG key and put it into /etc/apt/keyrings
+      ansible.builtin.get_url:
+        url: http://apt.releases.hashicorp.com/gpg
+        dest: /tmp/hashicorp-archive-keyring.gpg
+        mode: '0644'
+        force: true
+
+    - name: Debian/Ubuntu - Prepare GPG key to be used with apt
+      ansible.builtin.shell:  
+        cmd: "gpg --dearmor < /tmp/hashicorp-archive-keyring.gpg | tee /usr/share/keyrings/hashicorp-archive-keyring.gpg"
+
+    - name: Debian/Ubuntu - Adding Hashicorp repository 
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        filename: hashicorp
+        state: present
+
+    - name: Debian/Ubuntu - Clean up Temporary GPG file
+      ansible.builtin.file:
+        path: /tmp/hashicorp-archive-keyring.gpg
+        state: absent
+  when: not _hashicorpapps_repofile.stat.exists
+
+- name: Debian/Ubuntu - Install Packer
+  ansible.builtin.apt:
+    name: packer
+    update_cache: yes
+    cache_valid_time: 300
+    state: "{{ HashiCorpApps_Packer_State | default('present') }}"
+
+- name: Debian/Ubuntu - Install Vagrant
+  ansible.builtin.apt:
+    name: vagrant
+    update_cache: yes
+    cache_valid_time: 300
+    state: "{{ HashiCorpApps_Vagrant_State | default('present') }}"
+
+- name: Debian/Ubuntu - Install Vault
+  ansible.builtin.apt:
+    name: vault
+    update_cache: yes
+    cache_valid_time: 300
+    state: "{{  HashiCorpApps_Vault_State | default('absent') }}"
+
+- name: Debian/Ubuntu - Install Terraform
+  ansible.builtin.apt:
+    name: terraform
+    update_cache: yes
+    cache_valid_time: 300
+    state: "{{  HashiCorpApps_Terraform_State | default('absent') }}"

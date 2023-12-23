@@ -1,0 +1,31 @@
+---
+- name: Debian - apt-get update
+  ansible.builtin.apt:
+    update-cache: yes
+#    cache_valid_time: 900
+
+- name: Debian - Apply updates
+  ansible.builtin.apt:
+    upgrade:  dist
+    autoremove: yes
+    #state: latest
+  register: patched
+  delay: 10
+  retries: 12
+  become_user: root
+  until: patched is successful
+
+- name: Debian - Reboot after updates have completed
+  ansible.builtin.shell: "sleep 5 && reboot"
+  become_user: root
+  async: 1
+  poll: 0
+  when: patched is changed
+
+- name: Debian - Wait for the reboot to complete
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 30
+    sleep: 5
+    delay: 20
+    timeout: 300
+  when: patched is changed

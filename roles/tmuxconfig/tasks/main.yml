@@ -1,0 +1,8 @@
+---
+- name: Install and configure tmux on a Redhat based system
+  include: RedHat.yml
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" 
+
+- name: Install and configure tmux on a Debian based system
+  include: Debian.yml
+  when: ansible_distribution == "Ubuntu" or ansible_distribution == "Debian" 

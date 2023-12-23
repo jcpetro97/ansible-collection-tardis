@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: osupdate
+  author: jcpetro97
+  description: Role to apply operating system updates.
+  license: "license (MIT)"
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []

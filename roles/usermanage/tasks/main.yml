@@ -1,0 +1,69 @@
+---
+# tasks file for users
+
+- name: Manage users
+  block:
+    - name: Create user groups
+      group:
+        name: "{{ item.name }}"
+        state: present
+        gid: "{{ item.gid | default(omit) }}"
+      with_items: "{{ users_groups }}"
+      when: item.state | default('present') == 'present'
+      tags: ['users', 'groups', 'configuration']
+
+    - name: Setup users
+      user:
+        name: "{{ item.name }}"
+        state: "{{ item.state | default('present') }}"
+        uid: "{{ item.uid | default(omit) }}"
+        comment: "{{ item.comment if item.comment is defined else '' }}"
+        group: "{{ item.group | default(users_group) }}"
+        # empty string removes user from all secondary groups
+        groups: "{{ item.groups | join(', ') if 'groups' in item else '' }}"
+        append: "{{ item.append | default(omit) }}"
+        password: "{{ item.password if item.password is defined else '!' }}"
+        update_password: "{{ item.update_password | default(omit) }}"
+        create_home: "{{ item.create_home | default('yes' if users_create_home | bool else 'no') }}"
+        home: "{{ item.home | default('/home/' + item.name) }}"
+        shell: "{{ item.shell if item.shell is defined else users_shell }}"
+        remove: "{{ item.remove | default(omit) }}"
+        force: "{{ item.force | default(omit) }}"
+      with_items: "{{ users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: ['users', 'configuration']
+
+    - name: Delete user groups
+      group:
+        name: "{{ item.name }}"
+        state: absent
+        gid: "{{ item.gid | default(omit) }}"
+      with_items: "{{ users_groups }}"
+      when: item.state | default('present') == 'absent'
+      tags: ['users', 'groups', 'configuration']
+
+    - name: Add user sudo options
+      template:
+        src: sudo.j2
+        dest: "/etc/sudoers.d/{{ item.name }}"
+        mode: 0440
+      when:
+        - item.state | default('present') == 'present'
+        - item.sudo | default('no') | bool
+      with_items:
+        - "{{ users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: ['users', 'configuration']
+
+    - name: Remove user sudo options
+      file:
+        state: absent
+        path: "/etc/sudoers.d/{{ item.name }}"
+      when:
+        - (not item.sudo | default('no') | bool or item.state | default('present') == 'absent')
+      with_items: "{{ users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: ['users', 'configuration']

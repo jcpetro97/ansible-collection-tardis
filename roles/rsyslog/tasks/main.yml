@@ -1,0 +1,15 @@
+---
+- name: ensure rsyslog is installed
+  package:
+    name: rsyslog
+    state: present
+
+- name: copy new 50-default.conf file into /etc/rsyslog.d
+  template:
+    src:  50-default.conf.j2
+    dest: /etc/rsyslog.d/50-default.conf
+    owner:  root
+    group:  root
+    mode: 0644
+  notify:
+    - restart rsyslog

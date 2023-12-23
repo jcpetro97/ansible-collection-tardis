@@ -1,0 +1,20 @@
+---
+- name: "create bin dir if it doesn't exist"
+  file:
+    path: "~{{ item.UserName }}/bin"
+    state:  directory
+  with_items: "{{ Users }}"
+  loop_control:
+    label: "{{item.UserName}}"
+  become_user: "{{ item.UserName }}"
+- name: tmux-cssh for {{ item.UserName }}
+  get_url:
+    url: "{{ TmuxCsshUrl }}"
+    dest: "~{{ item.UserName }}/bin/tmux-cssh"
+    mode: 0755
+    validate_certs: no
+    force: yes
+  with_items: "{{ Users }}"
+  loop_control:
+    label: "{{ item.UserName }}"
+  become_user: "{{ item.UserName }}"

@@ -1,0 +1,37 @@
+---
+- name: RedHat - Check to see if a repository is already defined on the host
+  ansible.builtin.stat:
+    path: /etc/yum.repos.d/hashicorp.repo
+  register: _hashicorpapps_repofile
+
+- name: RedHat - Add the Hashicorp repository
+  ansible.builtin.yum_repository:
+    name: hashicorp
+    description: Hashicorp YUM repo
+    baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+    gpgkey: https://rpm.releases.hashicorp.com/gpg
+  when: not _hashicorpapps_repofile.stat.exists
+
+- name: RedHat - Install Packer
+  ansible.builtin.dnf:
+    name: packer
+    update_cache: yes
+    state: "{{ HashiCorpApps_Packer_State | default('present') }}"
+
+- name: RedHat - Install Vagrant
+  ansible.builtin.dnf:
+    name: vagrant
+    update_cache: yes
+    state: "{{ HashiCorpApps_Vagrant_State | default('present') }}"
+
+- name: RedHat - Install Vault
+  ansible.builtin.dnf:
+    name: vault
+    update_cache: yes
+    state: "{{  HashiCorpApps_Vault_State | default('absent') }}"
+
+- name: RedHat - Install Terraform
+  ansible.builtin.dnf:
+    name: terraform
+    update_cache: yes
+    state: "{{  HashiCorpApps_Terraform_State | default('absent') }}"
